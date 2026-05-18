@@ -467,6 +467,17 @@ func TestShouldUseResponsesAPI(t *testing.T) {
 	}
 }
 
+func TestZAIUsesChatCompletionsParameters(t *testing.T) {
+	b := &LLM{provider: schemas.OpenAI, disableResponsesAPI: true, useResponsesAPI: true, useMaxTokens: true, reasoningEnabled: true, reasoningEffort: "high"}
+	assert.False(t, b.shouldUseResponsesAPI(llm.LanguageModelConfig{NativeWebSearchAllowed: true}))
+
+	req := b.convertToBifrostRequest(llm.CompletionRequest{}, llm.LanguageModelConfig{MaxGeneratedTokens: 123})
+	require.NotNil(t, req.Params)
+	assert.Nil(t, req.Params.MaxCompletionTokens)
+	assert.Equal(t, 123, req.Params.ExtraParams["max_tokens"])
+	assert.Nil(t, req.Params.Reasoning)
+}
+
 func TestConvertMessagesReasoning(t *testing.T) {
 	tests := []struct {
 		name                string

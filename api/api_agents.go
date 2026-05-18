@@ -630,6 +630,8 @@ func (a *API) handleFetchModelsForService(c *gin.Context) {
 		svc.Type == llm.ServiceTypeOpenAI ||
 		svc.Type == llm.ServiceTypeAzure ||
 		svc.Type == llm.ServiceTypeOpenAICompatible ||
+		svc.Type == llm.ServiceTypeZAI ||
+		svc.Type == llm.ServiceTypeZAICoding ||
 		svc.Type == llm.ServiceTypeGemini ||
 		svc.Type == llm.ServiceTypeVertex
 	if !supportsModelFetching {
@@ -641,6 +643,8 @@ func (a *API) handleFetchModelsForService(c *gin.Context) {
 	switch svc.Type {
 	case llm.ServiceTypeOpenAICompatible:
 		hasRequiredCredentials = svc.APIKey != "" || svc.APIURL != ""
+	case llm.ServiceTypeZAI, llm.ServiceTypeZAICoding:
+		hasRequiredCredentials = true
 	case llm.ServiceTypeAzure:
 		hasRequiredCredentials = svc.APIKey != "" && svc.APIURL != ""
 	case llm.ServiceTypeVertex:

@@ -44,6 +44,8 @@ const mapServiceTypeToDisplayName = new Map<string, string>([
     ['bedrock', 'AWS Bedrock'],
     ['cohere', 'Cohere'],
     ['mistral', 'Mistral'],
+    ['zai', 'Z.AI API'],
+    ['zai-coding', 'Z.AI Coding Plan'],
     ['asage', 'asksage (Experimental)'],
     ['gemini', 'Google Gemini'],
     ['vertex', 'Google Vertex AI'],
@@ -73,7 +75,7 @@ type ServiceFieldsProps = {
 const ServiceFields = (props: ServiceFieldsProps) => {
     const type = props.service.type;
     const intl = useIntl();
-    const isOpenAIType = type === 'openai' || type === 'openaicompatible' || type === 'azure' || type === 'cohere' || type === 'mistral' || type === 'scale';
+    const isOpenAIType = type === 'openai' || type === 'openaicompatible' || type === 'azure' || type === 'cohere' || type === 'mistral' || type === 'scale' || type === 'zai' || type === 'zai-coding';
     const supportsResponsesAPIToggle = type === 'openaicompatible' || type === 'azure';
     const isCohere = type === 'cohere';
     const isMistral = type === 'mistral';
@@ -83,7 +85,7 @@ const ServiceFields = (props: ServiceFieldsProps) => {
     const [loadingModels, setLoadingModels] = useState(false);
     const [modelsFetchError, setModelsFetchError] = useState<string>('');
 
-    const supportsModelFetching = type === 'anthropic' || type === 'openai' || type === 'azure' || type === 'openaicompatible' || type === 'gemini' || type === 'vertex';
+    const supportsModelFetching = type === 'anthropic' || type === 'openai' || type === 'azure' || type === 'openaicompatible' || type === 'gemini' || type === 'vertex' || type === 'zai' || type === 'zai-coding';
 
     useEffect(() => {
         if (type === 'openai' && !props.service.useResponsesAPI) {
@@ -100,6 +102,10 @@ const ServiceFields = (props: ServiceFieldsProps) => {
         switch (type) {
         case 'openaicompatible':
             hasRequiredCredentials = Boolean(props.service.apiKey || props.service.apiURL);
+            break;
+        case 'zai':
+        case 'zai-coding':
+            hasRequiredCredentials = true;
             break;
         case 'vertex':
             hasRequiredCredentials = Boolean(props.service.vertexProjectID && props.service.region);
@@ -175,10 +181,17 @@ const ServiceFields = (props: ServiceFieldsProps) => {
                 value={props.service.type}
                 onChange={(e) => {
                     const nextType = e.target.value;
+                    let defaultModel = props.service.defaultModel;
+                    if (nextType === 'zai') {
+                        defaultModel = 'glm-5.1';
+                    } else if (nextType === 'zai-coding') {
+                        defaultModel = 'GLM-5.1';
+                    }
                     props.onChange({
                         ...props.service,
                         type: nextType,
                         apiKey: nextType === 'vertex' ? '' : props.service.apiKey,
+                        defaultModel,
                         useResponsesAPI: nextType === 'openai' ? true : props.service.useResponsesAPI,
                     });
                 }}
@@ -192,6 +205,8 @@ const ServiceFields = (props: ServiceFieldsProps) => {
                 <SelectionItemOption value='azure'>{'Azure'}</SelectionItemOption>
                 <SelectionItemOption value='cohere'>{'Cohere'}</SelectionItemOption>
                 <SelectionItemOption value='mistral'>{'Mistral'}</SelectionItemOption>
+                <SelectionItemOption value='zai'>{'Z.AI API'}</SelectionItemOption>
+                <SelectionItemOption value='zai-coding'>{'Z.AI Coding Plan'}</SelectionItemOption>
                 <SelectionItemOption value='scale'>{scaleAIToDisplayName(intl)}</SelectionItemOption>
                 <SelectionItemOption value='asage'>{'asksage (Experimental)'}</SelectionItemOption>
             </SelectionItem>
@@ -273,7 +288,7 @@ const ServiceFields = (props: ServiceFieldsProps) => {
             )}
             {isOpenAIType && (
                 <>
-                    {!isCohere && !isMistral && (
+                    {!isCohere && !isMistral && type !== 'zai' && type !== 'zai-coding' && (
                         <TextItem
                             label={isScale ? intl.formatMessage({defaultMessage: 'Account ID'}) : intl.formatMessage({defaultMessage: 'Organization ID'})}
                             value={props.service.orgId}

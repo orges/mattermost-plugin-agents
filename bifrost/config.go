@@ -13,6 +13,12 @@ import (
 	"github.com/mattermost/mattermost-plugin-agents/llm"
 )
 
+const (
+	zaiAPIBaseURL          = "https://api.z.ai/api/paas/v4"
+	zaiCodingBaseURL       = "https://api.z.ai/api/coding/paas/v4"
+	zaiChatCompletionsPath = "/chat/completions"
+)
+
 // MapServiceTypeToProvider maps our service type strings to Bifrost provider constants.
 func MapServiceTypeToProvider(serviceType string) (schemas.ModelProvider, error) {
 	switch serviceType {
@@ -20,6 +26,8 @@ func MapServiceTypeToProvider(serviceType string) (schemas.ModelProvider, error)
 		return schemas.OpenAI, nil
 	case llm.ServiceTypeOpenAICompatible:
 		return schemas.OpenAI, nil // Uses OpenAI with custom base URL
+	case llm.ServiceTypeZAI, llm.ServiceTypeZAICoding:
+		return schemas.OpenAI, nil // Z.AI implements the OpenAI Chat Completions protocol
 	case llm.ServiceTypeAzure:
 		return schemas.Azure, nil
 	case llm.ServiceTypeAnthropic:
@@ -104,6 +112,14 @@ func NewFromServiceConfig(serviceConfig llm.ServiceConfig, botConfig llm.BotConf
 		if apiURL == "" {
 			apiURL = "https://api.mistral.ai/v1"
 		}
+	case llm.ServiceTypeZAI:
+		if apiURL == "" {
+			apiURL = zaiAPIBaseURL
+		}
+	case llm.ServiceTypeZAICoding:
+		if apiURL == "" {
+			apiURL = zaiCodingBaseURL
+		}
 	}
 
 	apiURL = normalizeOpenAIBaseURL(provider, apiURL)
@@ -126,6 +142,9 @@ func NewFromServiceConfig(serviceConfig llm.ServiceConfig, botConfig llm.BotConf
 		StreamingTimeout:      streamingTimeout,
 		SendUserID:            serviceConfig.SendUserID,
 		UseResponsesAPI:       llm.ServiceUsesResponsesAPI(serviceConfig),
+		DisableResponsesAPI:   serviceConfig.Type == llm.ServiceTypeZAI || serviceConfig.Type == llm.ServiceTypeZAICoding,
+		UseMaxTokens:          serviceConfig.Type == llm.ServiceTypeZAI || serviceConfig.Type == llm.ServiceTypeZAICoding,
+		ChatCompletionPath:    serviceChatCompletionPath(serviceConfig.Type),
 
 		// Bot-specific configuration
 		EnabledNativeTools: enabledNativeTools,
@@ -137,9 +156,31 @@ func NewFromServiceConfig(serviceConfig llm.ServiceConfig, botConfig llm.BotConf
 	// Use bot's model if specified, otherwise use service's default model
 	if botConfig.Model != "" {
 		cfg.DefaultModel = botConfig.Model
+	} else if cfg.DefaultModel == "" {
+		cfg.DefaultModel = defaultModelForServiceType(serviceConfig.Type)
 	}
 
 	return New(cfg)
+}
+
+func defaultModelForServiceType(serviceType string) string {
+	switch serviceType {
+	case llm.ServiceTypeZAI:
+		return "glm-5.1"
+	case llm.ServiceTypeZAICoding:
+		return "GLM-5.1"
+	default:
+		return ""
+	}
+}
+
+func serviceChatCompletionPath(serviceType string) string {
+	switch serviceType {
+	case llm.ServiceTypeZAI, llm.ServiceTypeZAICoding:
+		return zaiChatCompletionsPath
+	default:
+		return ""
+	}
 }
 
 // normalizeOpenAIBaseURL strips a trailing /v1 suffix from API URLs for OpenAI-type providers.
@@ -165,6 +206,8 @@ func IsSupported(serviceType string) bool {
 		llm.ServiceTypeBedrock,
 		llm.ServiceTypeCohere,
 		llm.ServiceTypeMistral,
+		llm.ServiceTypeZAI,
+		llm.ServiceTypeZAICoding,
 		llm.ServiceTypeGemini,
 		llm.ServiceTypeVertex:
 		return true

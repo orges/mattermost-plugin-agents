@@ -38,8 +38,8 @@ type Props = {
 }
 
 // Keep in sync with legacy System Console bot form (webapp/src/components/system_console/bot.tsx).
-const visionToolServiceTypes = ['openai', 'openaicompatible', 'azure', 'anthropic', 'cohere', 'mistral', 'gemini', 'vertex'];
-const openAIStructuredOutputServiceTypes = ['openai', 'openaicompatible', 'azure'];
+const visionToolServiceTypes = ['openai', 'openaicompatible', 'azure', 'anthropic', 'cohere', 'mistral', 'zai', 'zai-coding', 'gemini', 'vertex'];
+const openAIStructuredOutputServiceTypes = ['openai', 'openaicompatible', 'azure', 'zai', 'zai-coding'];
 
 const ConfigTab = (props: Props) => {
     const {draft, onChange, onAvatarChange, services, errors = {}, usernameLocked = false} = props;

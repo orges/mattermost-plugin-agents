@@ -55,6 +55,9 @@ func ServiceUsesResponsesAPI(cfg ServiceConfig) bool {
 	if cfg.Type == ServiceTypeOpenAI {
 		return true
 	}
+	if cfg.Type == ServiceTypeZAI || cfg.Type == ServiceTypeZAICoding {
+		return false
+	}
 	return cfg.UseResponsesAPI
 }
 
@@ -215,6 +218,8 @@ func IsValidService(service ServiceConfig) bool {
 		return service.APIKey != ""
 	case ServiceTypeScale:
 		return service.APIKey != "" && service.APIURL != ""
+	case ServiceTypeZAI, ServiceTypeZAICoding:
+		return service.APIKey != ""
 	case ServiceTypeGemini:
 		return service.APIKey != ""
 	case ServiceTypeVertex:

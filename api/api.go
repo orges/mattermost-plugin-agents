@@ -591,6 +591,9 @@ func (a *API) handleFetchModels(c *gin.Context) {
 			c.AbortWithError(http.StatusBadRequest, fmt.Errorf("apiURL is required for openaicompatible when apiKey is not provided"))
 			return
 		}
+	case llm.ServiceTypeZAI, llm.ServiceTypeZAICoding:
+		// Z.AI model lists are static because the documented OpenAI-compatible
+		// endpoints do not expose a /models endpoint for both plans.
 	case llm.ServiceTypeVertex:
 		// Vertex AI authenticates via project + region; service-account JSON is optional (ADC).
 		if req.VertexProjectID == "" || req.Region == "" {

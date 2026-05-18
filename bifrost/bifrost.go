@@ -63,7 +63,12 @@ type LLM struct {
 	thinkingBudget     int
 
 	// UseResponsesAPI enables OpenAI Responses API for native tools support
-	useResponsesAPI bool
+	useResponsesAPI     bool
+	disableResponsesAPI bool
+	useMaxTokens        bool
+
+	// chatCompletionPath overrides Bifrost's default /v1/chat/completions path.
+	chatCompletionPath string
 }
 
 // Config holds the configuration for creating a LLM instance.
@@ -95,7 +100,12 @@ type Config struct {
 	ThinkingBudget     int
 
 	// UseResponsesAPI enables OpenAI Responses API for native tools support
-	UseResponsesAPI bool
+	UseResponsesAPI     bool
+	DisableResponsesAPI bool
+	UseMaxTokens        bool
+
+	// ChatCompletionPath overrides Bifrost's default /v1/chat/completions path.
+	ChatCompletionPath string
 }
 
 // providerAccount implements the Bifrost Account interface for a single provider.
@@ -256,19 +266,22 @@ func New(cfg Config) (*LLM, error) {
 	}
 
 	return &LLM{
-		client:             client,
-		provider:           cfg.Provider,
-		apiKey:             cfg.APIKey,
-		defaultModel:       cfg.DefaultModel,
-		inputTokenLimit:    cfg.InputTokenLimit,
-		outputTokenLimit:   outputLimit,
-		streamingTimeout:   streamingTimeout,
-		sendUserID:         cfg.SendUserID,
-		enabledNativeTools: cfg.EnabledNativeTools,
-		reasoningEnabled:   cfg.ReasoningEnabled,
-		reasoningEffort:    cfg.ReasoningEffort,
-		thinkingBudget:     cfg.ThinkingBudget,
-		useResponsesAPI:    cfg.UseResponsesAPI,
+		client:              client,
+		provider:            cfg.Provider,
+		apiKey:              cfg.APIKey,
+		defaultModel:        cfg.DefaultModel,
+		inputTokenLimit:     cfg.InputTokenLimit,
+		outputTokenLimit:    outputLimit,
+		streamingTimeout:    streamingTimeout,
+		sendUserID:          cfg.SendUserID,
+		enabledNativeTools:  cfg.EnabledNativeTools,
+		reasoningEnabled:    cfg.ReasoningEnabled,
+		reasoningEffort:     cfg.ReasoningEffort,
+		thinkingBudget:      cfg.ThinkingBudget,
+		useResponsesAPI:     cfg.UseResponsesAPI,
+		disableResponsesAPI: cfg.DisableResponsesAPI,
+		useMaxTokens:        cfg.UseMaxTokens,
+		chatCompletionPath:  cfg.ChatCompletionPath,
 	}, nil
 }
 
@@ -565,6 +578,9 @@ func (b *LLM) streamChat(ctx context.Context, request llm.CompletionRequest, cfg
 
 	// Convert to Bifrost request
 	bifrostReq := b.convertToBifrostRequest(request, cfg)
+	if b.chatCompletionPath != "" {
+		bifrostCtx.SetValue(schemas.BifrostContextKeyURLPath, b.chatCompletionPath)
+	}
 
 	// Make streaming request
 	streamChan, bifrostErr := b.client.ChatCompletionStreamRequest(bifrostCtx, bifrostReq)
@@ -810,6 +826,9 @@ type toolCallBuffer struct {
 
 // buildChatReasoning creates a ChatReasoning configuration if reasoning is enabled.
 func (b *LLM) buildChatReasoning(cfg llm.LanguageModelConfig) *schemas.ChatReasoning {
+	if b.disableResponsesAPI {
+		return nil
+	}
 	if !b.reasoningEnabled || cfg.ReasoningDisabled {
 		return nil
 	}
@@ -869,7 +888,11 @@ func (b *LLM) convertToBifrostRequest(request llm.CompletionRequest, cfg llm.Lan
 	// Set parameters
 	params := &schemas.ChatParameters{}
 	if cfg.MaxGeneratedTokens > 0 {
-		params.MaxCompletionTokens = Ptr(cfg.MaxGeneratedTokens)
+		if b.useMaxTokens {
+			params.ExtraParams = map[string]interface{}{"max_tokens": cfg.MaxGeneratedTokens}
+		} else {
+			params.MaxCompletionTokens = Ptr(cfg.MaxGeneratedTokens)
+		}
 	}
 	if len(tools) > 0 {
 		params.Tools = tools
@@ -1247,6 +1270,9 @@ func (b *LLM) providerSupportsNativeTools() bool {
 
 // shouldUseResponsesAPI determines if the Responses API should be used for this request.
 func (b *LLM) shouldUseResponsesAPI(cfg llm.LanguageModelConfig) bool {
+	if b.disableResponsesAPI {
+		return false
+	}
 	if b.useResponsesAPI {
 		return true
 	}

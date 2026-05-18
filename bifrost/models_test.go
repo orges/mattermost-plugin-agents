@@ -62,6 +62,20 @@ func TestNormalizeFetchModelsAPIURL(t *testing.T) {
 			apiURL:      "",
 			expected:    "https://api.mistral.ai/v1",
 		},
+		{
+			name:        "Z.AI API default URL applied",
+			serviceType: llm.ServiceTypeZAI,
+			provider:    schemas.OpenAI,
+			apiURL:      "",
+			expected:    zaiAPIBaseURL,
+		},
+		{
+			name:        "Z.AI Coding default URL applied",
+			serviceType: llm.ServiceTypeZAICoding,
+			provider:    schemas.OpenAI,
+			apiURL:      "",
+			expected:    zaiCodingBaseURL,
+		},
 	}
 
 	for _, tt := range tests {
@@ -70,4 +84,14 @@ func TestNormalizeFetchModelsAPIURL(t *testing.T) {
 			require.Equal(t, tt.expected, actual)
 		})
 	}
+}
+
+func TestFetchModelsForServiceZAIUsesStaticModels(t *testing.T) {
+	models, err := FetchModelsForService(llm.ServiceConfig{Type: llm.ServiceTypeZAI})
+	require.NoError(t, err)
+	require.Contains(t, models, llm.ModelInfo{ID: "glm-5.1", DisplayName: "glm-5.1"})
+
+	codingModels, err := FetchModelsForService(llm.ServiceConfig{Type: llm.ServiceTypeZAICoding})
+	require.NoError(t, err)
+	require.Contains(t, codingModels, llm.ModelInfo{ID: "GLM-5.1", DisplayName: "GLM-5.1"})
 }

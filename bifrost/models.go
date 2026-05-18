@@ -102,6 +102,10 @@ func FetchModelsForServiceType(serviceType, apiKey, apiURL, orgID string) ([]llm
 // region, and service-account JSON) that cannot be expressed as a single API
 // key.
 func FetchModelsForService(svc llm.ServiceConfig) ([]llm.ModelInfo, error) {
+	if models, ok := staticModelsForService(svc.Type); ok {
+		return models, nil
+	}
+
 	provider, err := MapServiceTypeToProvider(svc.Type)
 	if err != nil {
 		return nil, fmt.Errorf("model fetching not supported for service type: %s", svc.Type)
@@ -131,7 +135,54 @@ func normalizeFetchModelsAPIURL(serviceType string, provider schemas.ModelProvid
 		if apiURL == "" {
 			apiURL = "https://api.mistral.ai/v1"
 		}
+	case llm.ServiceTypeZAI:
+		if apiURL == "" {
+			apiURL = zaiAPIBaseURL
+		}
+	case llm.ServiceTypeZAICoding:
+		if apiURL == "" {
+			apiURL = zaiCodingBaseURL
+		}
 	}
 
 	return normalizeOpenAIBaseURL(provider, apiURL)
+}
+
+func staticModelsForService(serviceType string) ([]llm.ModelInfo, bool) {
+	switch serviceType {
+	case llm.ServiceTypeZAI:
+		return modelInfos([]string{
+			"glm-5.1",
+			"glm-5-turbo",
+			"glm-5",
+			"glm-4.7",
+			"glm-4.7-flash",
+			"glm-4.7-flashx",
+			"glm-4.6",
+			"glm-4.5",
+			"glm-4.5-air",
+			"glm-4.5-x",
+			"glm-4.5-airx",
+			"glm-4.5-flash",
+			"glm-4-32b-0414-128k",
+		}), true
+	case llm.ServiceTypeZAICoding:
+		return modelInfos([]string{
+			"GLM-5.1",
+			"GLM-5",
+			"GLM-5-Turbo",
+			"GLM-4.7",
+			"GLM-4.5-air",
+		}), true
+	default:
+		return nil, false
+	}
+}
+
+func modelInfos(ids []string) []llm.ModelInfo {
+	models := make([]llm.ModelInfo, 0, len(ids))
+	for _, id := range ids {
+		models = append(models, llm.ModelInfo{ID: id, DisplayName: id})
+	}
+	return models
 }

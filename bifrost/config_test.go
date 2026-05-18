@@ -27,6 +27,8 @@ func TestSupportsNativeTools(t *testing.T) {
 		{llm.ServiceTypeCohere, false},
 		{llm.ServiceTypeMistral, false},
 		{llm.ServiceTypeScale, false},
+		{llm.ServiceTypeZAI, false},
+		{llm.ServiceTypeZAICoding, false},
 		{"unknown", false},
 	}
 	for _, tt := range tests {
@@ -53,6 +55,8 @@ func TestFilterNativeToolsForServiceType(t *testing.T) {
 		{"Bedrock drops tools", llm.ServiceTypeBedrock, tools, []string{}},
 		{"Cohere drops tools", llm.ServiceTypeCohere, tools, []string{}},
 		{"Mistral drops tools", llm.ServiceTypeMistral, tools, []string{}},
+		{"Z.AI API drops native tools", llm.ServiceTypeZAI, tools, []string{}},
+		{"Z.AI Coding drops native tools", llm.ServiceTypeZAICoding, tools, []string{}},
 		{"nil tools stay nil", llm.ServiceTypeOpenAI, nil, nil},
 		{"empty tools stay empty", llm.ServiceTypeOpenAI, []string{}, []string{}},
 	}
@@ -75,6 +79,8 @@ func TestNewFromServiceConfigOpenAIForcesResponsesAPI(t *testing.T) {
 		{"OpenAI direct with flag true", llm.ServiceTypeOpenAI, true, true},
 		{"OpenAI Compatible respects flag false", llm.ServiceTypeOpenAICompatible, false, false},
 		{"OpenAI Compatible respects flag true", llm.ServiceTypeOpenAICompatible, true, true},
+		{"Z.AI API ignores responses flag", llm.ServiceTypeZAI, true, false},
+		{"Z.AI Coding ignores responses flag", llm.ServiceTypeZAICoding, true, false},
 		{"Anthropic respects flag false", llm.ServiceTypeAnthropic, false, false},
 	}
 	for _, tt := range tests {
@@ -93,6 +99,29 @@ func TestNewFromServiceConfigOpenAIForcesResponsesAPI(t *testing.T) {
 			llmInstance, err := NewFromServiceConfig(service, bot)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantUseResponsesAPI, llmInstance.useResponsesAPI)
+		})
+	}
+}
+
+func TestNewFromServiceConfigZAI(t *testing.T) {
+	tests := []struct {
+		name             string
+		serviceType      string
+		wantDefaultModel string
+	}{
+		{"Z.AI API", llm.ServiceTypeZAI, "glm-5.1"},
+		{"Z.AI Coding", llm.ServiceTypeZAICoding, "GLM-5.1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := llm.ServiceConfig{ID: "test", Type: tt.serviceType, APIKey: "key", UseResponsesAPI: true}
+			llmInstance, err := NewFromServiceConfig(service, llm.BotConfig{})
+			require.NoError(t, err)
+			assert.True(t, llmInstance.disableResponsesAPI)
+			assert.True(t, llmInstance.useMaxTokens)
+			assert.False(t, llmInstance.useResponsesAPI)
+			assert.Equal(t, zaiChatCompletionsPath, llmInstance.chatCompletionPath)
+			assert.Equal(t, tt.wantDefaultModel, llmInstance.defaultModel)
 		})
 	}
 }

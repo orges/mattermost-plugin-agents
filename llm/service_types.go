@@ -12,6 +12,8 @@ const (
 	ServiceTypeBedrock          = "bedrock"
 	ServiceTypeMistral          = "mistral"
 	ServiceTypeScale            = "scale"
+	ServiceTypeZAI              = "zai"
+	ServiceTypeZAICoding        = "zai-coding"
 	ServiceTypeGemini           = "gemini"
 	ServiceTypeVertex           = "vertex"
 )

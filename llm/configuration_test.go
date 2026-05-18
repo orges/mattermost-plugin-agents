@@ -267,6 +267,32 @@ func TestIsValidService(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "Valid Z.AI API service with API key",
+			service: ServiceConfig{
+				ID:     "service-zai",
+				Type:   ServiceTypeZAI,
+				APIKey: "zai-key",
+			},
+			want: true,
+		},
+		{
+			name: "Z.AI API service missing API key",
+			service: ServiceConfig{
+				ID:   "service-zai",
+				Type: ServiceTypeZAI,
+			},
+			want: false,
+		},
+		{
+			name: "Valid Z.AI Coding service with API key",
+			service: ServiceConfig{
+				ID:     "service-zai-coding",
+				Type:   ServiceTypeZAICoding,
+				APIKey: "zai-key",
+			},
+			want: true,
+		},
+		{
 			name: "Valid Azure service with API key and URL",
 			service: ServiceConfig{
 				ID:     "service-3",
